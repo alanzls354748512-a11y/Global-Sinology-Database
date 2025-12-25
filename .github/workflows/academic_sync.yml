@@ -1,0 +1,22 @@
+name: Global Sinology Academic Sync
+
+on:
+  schedule:
+    - cron: '0 19,7 * * *' # 台北時間每日 03:00 與 15:00 運行
+  workflow_dispatch: # 允許手動點擊執行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run Scholar Processor
+        env:
+          GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+        run: python Scholar_Processor.py
