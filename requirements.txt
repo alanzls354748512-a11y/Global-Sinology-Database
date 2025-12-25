@@ -5,3 +5,4 @@ yfinance
 pandas
 python-docx
 requests
+beautifulsoup4
