@@ -3,7 +3,7 @@ name: Global Sinology Academic Sync
 on:
   schedule:
     - cron: '0 19 * * *' # 北京時間凌晨 03:00 自動執行
-  workflow_dispatch:      # 允許手動點擊 "Run workflow" 診斷
+  workflow_dispatch:      # 允許手動點擊 "Run workflow" 進行診斷
 
 jobs:
   build:
