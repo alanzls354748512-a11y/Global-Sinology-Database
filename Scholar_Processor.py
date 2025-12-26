@@ -1,67 +1,40 @@
-import sys
 import os
-import json
 import datetime
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
 
-def get_sheets_service():
-    """初始化 Google Sheets API 服務"""
-    creds_json = os.environ.get('GDRIVE_CREDENTIALS')
-    if not creds_json:
-        print("❌ 錯誤：Secrets 未配置")
-        return None
-    try:
-        scopes = ['https://www.googleapis.com/auth/spreadsheets']
-        creds_dict = json.loads(creds_json, strict=False)
-        print(f"🤖 執行帳號: {creds_dict.get('client_email')}")
-        creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        return build('sheets', 'v4', credentials=creds)
-    except Exception as e:
-        print(f"❌ 認證失敗: {str(e)}")
-        return None
-
-def write_to_sheet(service, spreadsheet_id, sheet_name, title, content):
-    """將學術數據精確追加到指定的分頁"""
-    try:
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        values = [[timestamp, title, content]]
-        body = {'values': values}
-        
-        # 使用更寬鬆的範圍定義 'SheetName'!A1
-        range_name = f"'{sheet_name}'!A1"
-        
-        service.spreadsheets().values().append(
-            spreadsheetId=spreadsheet_id, 
-            range=range_name,
-            valueInputOption="RAW",
-            insertDataOption="INSERT_ROWS",
-            body=body
-        ).execute()
-        
-        print(f"✅ [寫入成功] 分頁: {sheet_name} | 數據已入庫")
-    except Exception as e:
-        print(f"❌ [寫入失敗] 分頁 {sheet_name} 報錯: {str(e)}")
-        if "404" in str(e):
-            print(f"👉 建議：請手動重命名試算表下方的 '{sheet_name}' 標籤，確保沒有前後空格。")
+def save_data_locally(category, title, content):
+    """將數據保存到本地倉庫文件夾中"""
+    # 建立存儲目錄
+    folder_path = f"Data_Archive/{category}"
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    
+    # 檔名處理（加入時間戳防重複）
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+    safe_title = "".join([c for c in title if c.isalnum() or c in (' ', '_')]).strip().replace(' ', '_')
+    file_name = f"{folder_path}/{timestamp}_{safe_title}.txt"
+    
+    # 寫入內容
+    with open(file_name, 'w', encoding='utf-8') as f:
+        f.write(f"Timestamp: {datetime.datetime.now()}\n")
+        f.write(f"Category: {category}\n")
+        f.write(f"Title: {title}\n")
+        f.write("-" * 30 + "\n")
+        f.write(content)
+    
+    print(f"✅ [本地保存成功] 路徑: {file_name}")
 
 if __name__ == "__main__":
-    print("🚀 全球學術資料庫：數據入庫最終校準...")
-    service = get_sheets_service()
+    print("🚀 全球學術資料庫：GitHub 倉庫本地存儲模式啟動...")
     
-    if service:
-        # 已校對的試算表 ID (來自截圖 366/381)
-        SPREADSHEET_ID = '1APWo1JMaI5R2WAIr2le2AIBF6m3PMmDaXptszX_fDIc'
-        
-        # 嚴格對應截圖 381 下方標籤頁
-        test_payload = [
-            {'title': 'Geography_NSS_Strategic_Update', 'content': 'Supply chain resilience data.', 'cat': 'Geography'},
-            {'title': 'East_Asian_History_Summary', 'content': 'Regional security architecture history.', 'cat': 'East_Asian_History'},
-            {'title': 'NSS_Cross_Analysis_2025', 'content': 'Technological decoupling monitoring.', 'cat': 'NSS_Analysis'},
-            {'title': 'Thought_Gov_Policy_Review', 'content': 'Governance thought evolution.', 'cat': 'Thought_Gov'}
-        ]
-        
-        for item in test_payload:
-            write_to_sheet(service, SPREADSHEET_ID, item['cat'], item['title'], item['content'])
+    # 模擬正式抓取數據邏輯
+    academic_data = [
+        {'cat': 'Geography', 'title': 'NSS Supply Chain Resilience', 'content': 'Strategic analysis of energy sovereignty.'},
+        {'cat': 'NSS_Analysis', 'title': 'Technological Decoupling Trend', 'content': 'Monitoring semi-conductor policy shifts.'},
+        {'cat': 'East_Asian_History', 'title': 'Security Architecture Review', 'content': 'Historical dynamics in Asia-Pacific.'},
+        {'cat': 'Thought_Gov', 'title': 'Governance Policy Brief', 'content': 'Evolution of modern governance thought.'}
+    ]
+    
+    for item in academic_data:
+        save_data_locally(item['cat'], item['title'], item['content'])
 
-    print("🏁 診斷任務執行結束。")
+    print("🏁 數據處理完成，等待 GitHub Action 執行提交...")
