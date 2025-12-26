@@ -3,89 +3,94 @@ import datetime
 
 # ========================================================
 # 項目名稱：全球漢學學術抓取 (Global Sinology Academic Sync)
-# 項目屬性：獨立項目 (與全球金融數據庫完全隔離)
-# 核心邏輯：全球範圍掃描 + 領軍人物權重匹配
+# 任務分組：當代儒學專項 (港臺新儒家 / 大陸新儒家)
+# 核心邏輯：全球範圍掃描 + 特定流派領軍人物追蹤
 # 存儲路徑：GitHub 倉庫 /Data_Archive/
 # ========================================================
 
-def save_academic_data(category, title, content, author="Unknown", is_leading_figure=False, source="Global_Network"):
+def save_academic_data(category, title, content, author="Unknown", is_leading_figure=False, school="General"):
     """
-    兼顧全球抓取與領軍人物動態的保存函數
+    保存漢學數據，新增『學術流派』標籤
     """
     base_folder = "Data_Archive"
     
-    # 根據權重決定存儲子目錄
+    # 建立目錄結構：/分類/流派/人物權重
     if is_leading_figure:
-        folder_path = f"{base_folder}/{category}/Leading_Figures_Focus"
+        folder_path = f"{base_folder}/{category}/{school}/Leading_Figures"
     else:
-        folder_path = f"{base_folder}/{category}/Global_General_Research"
+        folder_path = f"{base_folder}/{category}/{school}/General_Research"
         
     if not os.path.exists(folder_path):
         os.makedirs(folder_path, exist_ok=True)
     
-    # 檔名規範：[日期]_[作者]_[來源簡寫]_[標題前20字]
+    # 檔名規範：[日期]_[作者]_[標題前20字]
     timestamp = datetime.datetime.now().strftime("%Y%m%d")
     safe_author = "".join([c for c in author if c.isalnum()]).strip()
     safe_title = "".join([c for c in title if c.isalnum() or c in (' ', '_')]).strip().replace(' ', '_')[:20]
-    file_name = f"{folder_path}/{timestamp}_{safe_author}_{source}_{safe_title}.txt"
+    file_name = f"{folder_path}/{timestamp}_{safe_author}_{safe_title}.txt"
     
     try:
         with open(file_name, 'w', encoding='utf-8') as f:
-            f.write("【全球漢學學術抓取 - 獨立監測報告】\n")
+            f.write("【全球漢學學術抓取 - 儒學專項報告】\n")
             f.write(f"同步時間: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"數據來源: {source}\n")
-            f.write(f"學術分類: {category}\n")
-            f.write(f"權重標註: {'⭐️ 領軍人物/學科帶頭人' if is_leading_figure else '🌐 全球廣域掃描'}\n")
-            f.write(f"學者/團隊: {author}\n")
-            f.write(f"文章/動態標題: {title}\n")
+            f.write(f"學術流派: {school}\n")
+            f.write(f"權重標註: {'⭐️ 領軍人物' if is_leading_figure else '🌐 常規監測'}\n")
+            f.write(f"學者姓名: {author}\n")
+            f.write(f"文章標題: {title}\n")
             f.write("-" * 50 + "\n")
-            f.write(f"學術摘要/內容細節:\n{content}\n")
+            f.write(f"內容摘要:\n{content}\n")
             f.write("-" * 50 + "\n")
-            f.write("聲明：本項目數據獨立於『全球金融數據庫』，專注於漢學與地緣歷史研究。\n")
-        print(f"✅ [入庫成功] 分類: {category} | 來源: {source} | 檔案: {file_name}")
+            f.write("獨立聲明：本數據與『全球金融數據庫』無關，嚴格隔離。\n")
+        print(f"✅ [成功入庫] 流派: {school} | 作者: {author}")
     except Exception as e:
-        print(f"❌ [寫入出錯]: {str(e)}")
+        print(f"❌ [寫入錯誤]: {str(e)}")
 
 if __name__ == "__main__":
-    print("🚀 全球漢學學術抓取任務啟動...")
+    print("🚀 全球漢學學術抓取：當代儒學流派監測啟動...")
     
-    # 定義監控大師名單 (學術雷達)
-    MASTERS_LIST = ["葛兆光", "許倬雲", "閻學通", "茅海建", "汪暉", "許紀霖"]
+    # 定義核心流派與領軍人物
+    SCHOOLS_MAP = {
+        "HK_TW_NeoConfucianism": ["杜維明", "劉述先", "成中英", "林安梧"],
+        "Mainland_NeoConfucianism": ["蔣慶", "陳明", "張祥龍", "秋風"],
+        "General_Sinology": ["葛兆光", "許倬雲", "汪暉"]
+    }
     
-    # 模擬全球雙軌抓取流 (JSTOR, CNKI, NCPSS, Scholar)
+    # 模擬抓取流：包含港臺與大陸新儒家的最新動態
     raw_data_stream = [
         {
             'cat': 'Thought_Gov',
-            'author': '葛兆光',
-            'title': '宅茲中國：傳統治理觀的現代重構',
-            'content': '本文論述了中國傳統空間意識與國家治理的內在邏輯。',
-            'source': 'CNKI_Overseas'
+            'author': '杜維明',
+            'title': '精神人文主義與當代儒學的全球化路徑',
+            'school': 'HK_TW_NeoConfucianism',
+            'content': '論述儒家思想在現代文明對話中的核心價值。'
         },
         {
-            'cat': 'NSS_Analysis',
-            'author': 'CFR_Sinology_Panel',
-            'title': 'Strategic Shifts in East Asian Security History',
-            'content': 'Analysis of regional stability patterns through a historical lens.',
-            'source': 'Scholar_Global'
+            'cat': 'Thought_Gov',
+            'author': '蔣慶',
+            'title': '廣義公羊學與大陸新儒家的政治實踐論',
+            'school': 'Mainland_NeoConfucianism',
+            'content': '針對大陸新儒家在政治哲學領域的體系化構建。'
         },
         {
-            'cat': 'Geography',
-            'author': 'NCPSS_Researcher',
-            'title': '邊疆地理與環境韌性研究綜述',
-            'content': '基於國家哲社中心的最新學術產出。',
-            'source': 'NCPSS_CN'
+            'cat': 'East_Asian_History',
+            'author': '林安梧',
+            'title': '血緣性角色與當代公民社會的張力',
+            'school': 'HK_TW_NeoConfucianism',
+            'content': '從新儒家視角分析東亞社會結構的變遷。'
         }
     ]
     
     for data in raw_data_stream:
-        # 自動權重匹配
-        is_leader = any(master in data['author'] for master in MASTERS_LIST)
+        # 自動識別是否為領軍人物
+        all_leaders = [name for sublist in SCHOOLS_MAP.values() for name in sublist]
+        is_leader = data['author'] in all_leaders
+        
         save_academic_data(
             category=data['cat'],
             title=data['title'],
             content=data['content'],
             author=data['author'],
             is_leading_figure=is_leader,
-            source=data['source']
+            school=data['school']
         )
-    print("🏁 漢學任務處理完成。")
+    print("🏁 漢學儒學專項任務處理完成。")
