@@ -5,70 +5,71 @@ from googleapiclient.discovery import build
 from google.oauth2 import service_account
 from googleapiclient.http import MediaInMemoryUpload
 
-# --- 環境兼容性補丁 ---
-try:
-    if sys.version_info >= (3, 10):
-        from importlib.metadata import packages_distributions
-    else:
-        from importlib_metadata import packages_distributions
-except ImportError:
-    def packages_distributions(): return {}
-
 def get_gdrive_service():
-    """初始化 Google Drive API 服務"""
+    """初始化 Google Drive API，並打印帳號以便確認"""
     creds_json = os.environ.get('GDRIVE_CREDENTIALS')
     if not creds_json:
-        print("❌ 錯誤：找不到環境變數 GDRIVE_CREDENTIALS。請檢查 GitHub Secrets。")
+        print("❌ 錯誤：GitHub Secrets 中找不到 GDRIVE_CREDENTIALS。")
         return None
     try:
         scopes = ['https://www.googleapis.com/auth/drive']
-        creds_dict = json.loads(creds_json)
-        # 確認與 JSON 文件一致
-        print(f"🤖 執行帳號: {creds_dict.get('client_email')}")
+        # 處理 JSON 字符串可能存在的格式問題
+        creds_dict = json.loads(creds_json, strict=False)
+        print(f"🤖 執行帳號確認: {creds_dict.get('client_email')}")
         creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=scopes)
         return build('drive', 'v3', credentials=creds)
     except Exception as e:
-        print(f"❌ 認證失敗: {str(e)}")
+        print(f"❌ 認證初始化出錯: {str(e)}")
         return None
 
-def upload_to_folder(service, title, content, folder_id):
-    """執行數據寫入動作"""
+def force_sync_to_folder(service, title, content, folder_id):
+    """執行強制寫入並回報最終雲端 ID"""
     try:
-        file_metadata = {'name': title, 'parents': [folder_id]}
+        # 強制指定 parents 參數以穿透路徑
+        file_metadata = {
+            'name': title,
+            'parents': [folder_id]
+        }
         media = MediaInMemoryUpload(content.encode('utf-8'), mimetype='text/plain')
-        file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-        print(f"✅ [寫入成功] 文件: {title} | 目標 ID: {folder_id}")
-        return True
+        
+        # 執行 API 創建命令
+        file = service.files().create(
+            body=file_metadata, 
+            media_body=media, 
+            fields='id'
+        ).execute()
+        
+        file_id = file.get('id')
+        print(f"✅ [確認] 寫入成功！文件: {title} | 目標 ID: {folder_id} | 雲端文件 ID: {file_id}")
+        return file_id
     except Exception as e:
-        print(f"❌ [寫入失敗] 文件夾 {folder_id} 報錯: {str(e)}")
-        if "403" in str(e):
-            print("👉 診斷：權限不足。請確保已將 finance-auto-sync 郵箱設為編輯者。")
-        return False
+        print(f"❌ [失敗] 無法寫入文件夾 {folder_id}。原因: {str(e)}")
+        return None
 
 if __name__ == "__main__":
-    print("🚀 全球學術資料庫：24/7 最終校準同步開始...")
+    print("🚀 全球學術資料庫：路徑校正與數據寫入開始...")
     service = get_gdrive_service()
     
     if service:
-        # ⚠️ 根據截圖 341-344 嚴格校對的 ID ⚠️
+        # 根據您的截圖 341-344 嚴格校對的 ID 映射表
         FOLDER_MAP = {
-            'Geography': '12Y0tfBUQ-B6VZPEVTLIFKIALeY9GIDSa',     # 截圖 341
-            'East_Asian_History': '14O9gDpMZT0Ew3-J2t6Sbr-6BffZH4gZ4', # 截圖 342
-            'NSS_Cross': '1BxkNCkitbw-YMO0BDcQzdOG6KmXEXR0W',      # 截圖 343
-            'Thought_Gov': '14H9f4hduc3QmmE3TAjnCtVNn36xdVHJU'    # 截圖 344
+            'Geography': '12Y0tfBUQ-B6VZPEVTLIFKIALeY9GIDSa', 
+            'History': '14O9gDpMZT0Ew3-J2t6Sbr-6BffZH4gZ4',
+            'NSS_Analysis': '1BxkNCkitbw-YMO0BDcQzdOG6KmXEXR0W',
+            'Thought_Gov': '14H9f4hduc3QmmE3TAjnCtVNn36xdVHJU'
         }
         
-        # 測試寫入數據
+        # 準備強制寫入的測試內容
         test_items = [
-            {'title': 'Geo_System_Test.txt', 'content': 'Geography data sync test.', 'cat': 'Geography'},
-            {'title': 'History_System_Test.txt', 'content': 'History data sync test.', 'cat': 'East_Asian_History'},
-            {'title': 'NSS_System_Test.txt', 'content': 'NSS Analysis sync test.', 'cat': 'NSS_Cross'},
-            {'title': 'Gov_System_Test.txt', 'content': 'Governance data sync test.', 'cat': 'Thought_Gov'}
+            {'title': 'Geography_NSS_2025_Update.txt', 'content': 'NSS Logic: Geography resilience data update.', 'cat': 'Geography'},
+            {'title': 'NSS_Cross_Analysis_Summary.txt', 'content': 'Technological decoupling research summary.', 'cat': 'NSS_Analysis'}
         ]
         
         for item in test_items:
             fid = FOLDER_MAP.get(item['cat'])
             if fid:
-                upload_to_folder(service, item['title'], item['content'], fid)
+                force_sync_to_folder(service, item['title'], item['content'], fid)
+            else:
+                print(f"⚠️ 跳過分類 [{item['cat']}]：ID 未配置。")
 
-    print("🏁 任務結束。請在 1 分鐘後刷新 Google Drive 查看結果。")
+    print("🏁 診斷任務結束。請查看日誌中是否有 ✅ 字樣。")
