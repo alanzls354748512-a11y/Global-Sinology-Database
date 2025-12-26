@@ -1,78 +1,61 @@
 import sys
 import os
 import json
-from googleapiclient.discovery import build
 from google.oauth2 import service_account
-from googleapiclient.http import MediaInMemoryUpload
+from googleapiclient.discovery import build
 
-def get_gdrive_service():
+def get_sheets_service():
+    """初始化 Google Sheets API 服務"""
     creds_json = os.environ.get('GDRIVE_CREDENTIALS')
     if not creds_json:
-        print("❌ 錯誤：GitHub Secrets 中找不到 GDRIVE_CREDENTIALS")
+        print("❌ 錯誤：Secrets 未配置")
         return None
     try:
-        scopes = ['https://www.googleapis.com/auth/drive']
+        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         creds_dict = json.loads(creds_json, strict=False)
         creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        return build('drive', 'v3', credentials=creds)
+        return build('sheets', 'v4', credentials=creds)
     except Exception as e:
-        print(f"❌ 認證初始化出錯: {str(e)}")
+        print(f"❌ 認證失敗: {str(e)}")
         return None
 
-def upload_to_personal_account(service, title, content, folder_id):
-    """
-    針對個人帳號的終極修復：先建立文件，再透過權限操作確保文件出現在您的文件夾
-    """
+def write_to_sheet(service, spreadsheet_id, sheet_name, title, content):
+    """將學術抓取數據寫入指定的工作表"""
     try:
-        # 第一步：嘗試直接建立
-        file_metadata = {
-            'name': title,
-            'parents': [folder_id]
-        }
-        media = MediaInMemoryUpload(content.encode('utf-8'), mimetype='text/plain')
+        # 準備寫入的行數據：時間、標題、內容摘要
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        values = [[timestamp, title, content[:500]]] # 寫入前 500 字作為摘要
         
-        # 使用 ignoreDefaultVisibility 參數嘗試穿透配額
-        file = service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id',
-            supportsAllDrives=True
+        body = {'values': values}
+        range_name = f"{sheet_name}!A:C"
+        
+        service.spreadsheets().values().append(
+            spreadsheet_id=spreadsheet_id,
+            range=range_name,
+            valueInputOption="RAW",
+            body=body
         ).execute()
         
-        print(f"✅ [寫入成功] 文件: {title} | 文件 ID: {file.get('id')}")
-        return file.get('id')
-
+        print(f"✅ [寫入成功] 分類: {sheet_name} | 標題: {title}")
     except Exception as e:
-        print(f"❌ [失敗] 無法寫入文件夾 {folder_id}。原因: {str(e)}")
-        if "storageQuotaExceeded" in str(e):
-            print("👉 偵測到個人帳號空間限制。請檢查您的 Gmail 儲存空間是否已接近 15GB 或您購買的 2TB 上限。")
-            print("👉 另外，請確認該文件夾的『分享』設定中，機器人帳號確實是『編輯者』。")
-        return None
+        print(f"❌ [寫入失敗] 分類 {sheet_name} 報錯: {str(e)}")
 
 if __name__ == "__main__":
-    print("🚀 全球學術資料庫：個人帳號空間兼容模式啟動...")
-    service = get_gdrive_service()
+    print("🚀 全球學術資料庫：Sheets 兼容模式啟動 (繞過配額限制)...")
+    service = get_sheets_service()
     
     if service:
-        # 已校準的精確 ID
-        FOLDER_MAP = {
-            'Geography': '12Y0tfBUQ-B6VZPEVTLIFKIALeY9GIDSa',
-            'East_Asian_History': '14O9gDpMZT0Ew3-J2t6Sbr-6BffZH4gZ4',
-            'NSS_Analysis': '1BxkNCkitbw-YMO0BDcQzdOG6KmXEXR0W',
-            'Thought_Gov': '14H9f4hduc3QmmE3TAjnCtVNn36xdVHJU'
-        }
+        # ⚠️ 請在此處填入您新建的 Google Sheets 網址中的長 ID ⚠️
+        # 網址格式：https://docs.google.com/spreadsheets/d/您的ID/edit
+        SPREADSHEET_ID = '在此填入您的試算表ID' 
         
         test_payload = [
-            {
-                'title': 'Personal_Account_Verify_2025.txt', 
-                'content': 'Status: Personal account mode active. Quota bypass testing.', 
-                'cat': 'NSS_Analysis'
-            }
+            {'title': 'NSS_Final_Success_2025', 'content': 'Status: Sheets channel active. Strategic monitoring stabilized.', 'cat': 'NSS_Analysis'},
+            {'title': 'Geography_Resilience_Update', 'content': 'Supply chain resilience data via Sheets.', 'cat': 'Geography'}
         ]
         
         for item in test_payload:
-            fid = FOLDER_MAP.get(item['cat'])
-            if fid:
-                upload_to_personal_account(service, item['title'], item['content'], fid)
+            write_to_sheet(service, SPREADSHEET_ID, item['cat'], item['title'], item['content'])
 
-    print("🏁 診斷任務結束。")
+    print("🏁 任務結束。請查看 Google Sheets 內容。")
