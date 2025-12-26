@@ -3,7 +3,7 @@ name: Global Sinology Academic Sync
 on:
   schedule:
     - cron: '0 19 * * *' # 北京時間凌晨 03:00 自動執行
-  workflow_dispatch:      # 支援手動觸發測試
+  workflow_dispatch:      # 允許手動觸發測試
 
 jobs:
   build:
@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10' # 核心修復：升級至 3.10 以支援 importlib.metadata
+          python-version: '3.10'
           cache: 'pip'
 
       - name: Install dependencies
@@ -27,5 +27,7 @@ jobs:
 
       - name: Run Scholar Processor
         env:
+          # 確保您的 GitHub Secrets 中已設定 GDRIVE_CREDENTIALS
+          GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
           PYTHONPATH: .
         run: python Scholar_Processor.py
