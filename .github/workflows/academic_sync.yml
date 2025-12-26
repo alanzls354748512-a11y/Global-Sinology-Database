@@ -2,13 +2,12 @@ name: Global Sinology Academic Sync
 
 on:
   schedule:
-    - cron: '0 19 * * *' # 北京時間凌晨 03:00 自動執行
-  workflow_dispatch:      # 允許手動觸發測試
+    - cron: '0 19 * * *' 
+  workflow_dispatch:      
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -27,7 +26,6 @@ jobs:
 
       - name: Run Scholar Processor
         env:
-          # 確保您的 GitHub Secrets 中已設定 GDRIVE_CREDENTIALS
           GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
           PYTHONPATH: .
         run: python Scholar_Processor.py
