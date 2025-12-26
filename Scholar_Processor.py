@@ -5,7 +5,7 @@ from googleapiclient.discovery import build
 from google.oauth2 import service_account
 from googleapiclient.http import MediaInMemoryUpload
 
-# --- 環境兼容性補丁 ---
+# --- 核心環境兼容性補丁 ---
 try:
     if sys.version_info >= (3, 10):
         from importlib.metadata import packages_distributions
@@ -14,8 +14,8 @@ try:
 except ImportError:
     def packages_distributions(): return {}
 
-# --- Google Drive 初始化 ---
 def get_gdrive_service():
+    """從 Secrets 獲取認證"""
     creds_json = os.environ.get('GDRIVE_CREDENTIALS')
     if not creds_json:
         print("❌ 錯誤：GitHub Secrets 中找不到 GDRIVE_CREDENTIALS")
@@ -23,46 +23,51 @@ def get_gdrive_service():
     try:
         scopes = ['https://www.googleapis.com/auth/drive']
         creds_dict = json.loads(creds_json)
+        # 這裡會顯示是哪個機器人帳號在執行
+        print(f"🤖 正在使用服務帳號: {creds_dict.get('client_email')}")
         creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=scopes)
         return build('drive', 'v3', credentials=creds)
     except Exception as e:
-        print(f"❌ 認證出錯: {str(e)}")
+        print(f"❌ 認證初始化出錯: {str(e)}")
         return None
 
-def upload_to_gdrive(service, title, content, folder_id):
+def upload_test_file(service, title, content, folder_id):
+    """嘗試寫入文件，並捕獲詳細錯誤"""
     try:
         file_metadata = {'name': title, 'parents': [folder_id]}
         media = MediaInMemoryUpload(content.encode('utf-8'), mimetype='text/plain')
         file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-        print(f"✅ 已成功寫入文件: {title} (ID: {file.get('id')})")
+        print(f"✅ 寫入成功！文件: {title} | 新 ID: {file.get('id')}")
+        return True
     except Exception as e:
-        print(f"❌ 寫入失敗 [{title}]: {str(e)}")
+        print(f"❌ 寫入失敗！文件夹 ID [{folder_id}] 報錯: {str(e)}")
+        if "404" in str(e):
+            print("   👉 提示：找不到該文件夾，請檢查 ID 是否正確。")
+        elif "403" in str(e):
+            print("   👉 提示：權限不足！請確保已將服務帳號設為文件夾的『編輯者』。")
+        return False
 
 if __name__ == "__main__":
-    print("🚀 全球學術資料庫：同步測試開始...")
+    print("🚀 全球學術資料庫 (Global Sinology Academic) 同步測試中...")
     service = get_gdrive_service()
     
     if service:
-        # ⚠️ 重點：請將下方引號內的長字符串替換为您文件夾網址末尾的 ID
-        # 例如網址是 folders/1abc... 則 ID 就是 1abc...
+        # ⚠️ 請確保此處 ID 與您網頁端看到的一致
         FOLDER_MAP = {
-            'Geography': '這裡填入您的Geography文件夾ID',
-            'Governance': '這裡填入您的Governance文件夾ID',
-            'Thought': '這裡填入您的Thought文件夾ID',
-            'Archive': '這裡填入您的Archive文件夾ID'
+            'Geography': '12Y0tfBUQ-B6VZPEVTLIFKIALeY9GIDSa', # 這是根據您截圖生成的參考 ID
+            'Governance': '14H9f4hduc3QmmE3TAjnCtVNn36xdVHJU',
+            'Thought': '14H9f4hduc3QmmE3TAjnCtVNn36xdVHJU', # 治理與思想暫設同一處
+            'Archive': '12Y0tfBUQ-B6VZPEVTLIFKIALeY9GIDSa'
         }
         
-        # 測試數據
-        test_items = [
-            {'title': '系統測試_地理模塊.txt', 'content': '數據抓取測試 - 地理', 'cat': 'Geography'},
-            {'title': '系統測試_治理模塊.txt', 'content': '數據抓取測試 - 治理', 'cat': 'Governance'}
+        # 執行抓取數據測試
+        mock_data = [
+            {'title': 'NSS_SupplyChain_Resilience_2025.txt', 'content': 'NSS Strategic Data Update', 'cat': 'Geography'},
+            {'title': 'Global_Governance_Dynamics.txt', 'content': 'Governance Data Update', 'cat': 'Governance'}
         ]
         
-        for item in test_items:
+        for item in mock_data:
             fid = FOLDER_MAP.get(item['cat'])
-            if fid and '這裡填入' not in fid:
-                upload_to_gdrive(service, item['title'], item['content'], fid)
-            else:
-                print(f"⚠️ 警告：分類 [{item['cat']}] 的 ID 尚未正確設置，跳過上傳。")
-    
-    print("🏁 任務執行完畢。")
+            upload_test_file(service, item['title'], item['content'], fid)
+            
+    print("🏁 診斷結束。")
