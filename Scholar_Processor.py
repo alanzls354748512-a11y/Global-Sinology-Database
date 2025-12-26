@@ -28,10 +28,9 @@ def write_to_sheet(service, spreadsheet_id, sheet_name, title, content):
         values = [[timestamp, title, content]]
         body = {'values': values}
         
-        # 加上單引號以防止分頁名稱解析錯誤
-        range_name = f"'{sheet_name}'!A:C"
+        # 使用更寬鬆的範圍定義 'SheetName'!A1
+        range_name = f"'{sheet_name}'!A1"
         
-        # 使用正確的關鍵字參數 spreadsheetId
         service.spreadsheets().values().append(
             spreadsheetId=spreadsheet_id, 
             range=range_name,
@@ -40,29 +39,29 @@ def write_to_sheet(service, spreadsheet_id, sheet_name, title, content):
             body=body
         ).execute()
         
-        print(f"✅ [寫入成功] 分類: {sheet_name} | 標題: {title}")
+        print(f"✅ [寫入成功] 分頁: {sheet_name} | 數據已入庫")
     except Exception as e:
-        print(f"❌ [寫入失敗] 分類 {sheet_name} 報錯: {str(e)}")
+        print(f"❌ [寫入失敗] 分頁 {sheet_name} 報錯: {str(e)}")
         if "404" in str(e):
-            print("👉 診斷：請檢查分頁標籤名稱是否與截圖 379 完全一致。")
+            print(f"👉 建議：請手動重命名試算表下方的 '{sheet_name}' 標籤，確保沒有前後空格。")
 
 if __name__ == "__main__":
-    print("🚀 全球學術資料庫：數據入庫校準啟動...")
+    print("🚀 全球學術資料庫：數據入庫最終校準...")
     service = get_sheets_service()
     
     if service:
-        # 已校對的試算表 ID
+        # 已校對的試算表 ID (來自截圖 366/381)
         SPREADSHEET_ID = '1APWo1JMaI5R2WAIr2le2AIBF6m3PMmDaXptszX_fDIc'
         
-        # 根據截圖 379 嚴格對齊的分類荷載
+        # 嚴格對應截圖 381 下方標籤頁
         test_payload = [
-            {'title': 'Geography_NSS_Update', 'content': 'Supply chain resilience analysis.', 'cat': 'Geography'},
-            {'title': 'East_Asian_History_Summary', 'content': 'Regional security history data.', 'cat': 'East_Asian_History'},
-            {'title': 'NSS_Cross_Analysis_2025', 'content': 'Strategic decoupling trends monitoring.', 'cat': 'NSS_Analysis'},
-            {'title': 'Governance_Policy_Review', 'content': 'Thought and governance policy updates.', 'cat': 'Thought_Gov'}
+            {'title': 'Geography_NSS_Strategic_Update', 'content': 'Supply chain resilience data.', 'cat': 'Geography'},
+            {'title': 'East_Asian_History_Summary', 'content': 'Regional security architecture history.', 'cat': 'East_Asian_History'},
+            {'title': 'NSS_Cross_Analysis_2025', 'content': 'Technological decoupling monitoring.', 'cat': 'NSS_Analysis'},
+            {'title': 'Thought_Gov_Policy_Review', 'content': 'Governance thought evolution.', 'cat': 'Thought_Gov'}
         ]
         
         for item in test_payload:
             write_to_sheet(service, SPREADSHEET_ID, item['cat'], item['title'], item['content'])
 
-    print("🏁 任務結束。")
+    print("🏁 診斷任務執行結束。")
