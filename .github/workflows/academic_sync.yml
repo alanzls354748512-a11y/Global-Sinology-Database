@@ -1,5 +1,29 @@
+name: Global Sinology Academic Sync
+
 on:
   schedule:
     # 每 6 小時自動運行一次 (台北時間 00:00, 06:00, 12:00, 18:00)
     - cron: '0 */6 * * *'
-  workflow_dispatch: # 保留手動點火功能
+  workflow_dispatch: # 保留手動運行按鈕
+
+jobs:
+  run-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. 下載倉庫代碼
+        uses: actions/checkout@v3
+
+      - name: 2. 安裝 Python 環境
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: 3. 安裝必要套件
+        run: |
+          pip install requests google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
+
+      - name: 4. 執行抓取與上傳腳本
+        env:
+          # 這裡必須對應您在 GitHub Secrets 設置的名稱
+          GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+        run: python Scholar_Processor.py
